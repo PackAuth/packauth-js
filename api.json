@@ -1,0 +1,480 @@
+{
+  "$schema": "../schemas/packauth.registry.v1.json",
+  "registry_id": "packauth:registry:api",
+  "registry_version": "1.0.0",
+  "concept": "api_operations",
+  "constitution_ref": "constitution/10-SURFACES.md",
+  "notes": [
+    "THE canonical list of every PackAuth API operation. The Worker binds handlers to these rows by operation_id and the SDK derives its method set from them, so the route table exists exactly once — declaring it in code AND again in a client is how an SDK silently falls behind its own API.",
+    "`operation_id` is the stable name. A path can change without breaking a caller; an operation_id changing is a breaking change and is treated as one.",
+    "`scope` is the OAuth-style scope the caller must hold. `public: true` means no authentication — there are 3 such operations and each is public for a stated reason: liveness, the certificate-verification link a printer follows, and the Stripe intake, which is signature-verified instead.",
+    "Adding a route without a row here fails the api-canonical gate, and so does a row with no handler. The bijection is checked in both directions because either half alone is useless: an unreachable handler is dead code, and a declared operation with no handler is a promise the API does not keep."
+  ],
+  "api_scopes": [
+    {
+      "id": "approvals:write",
+      "description": "Grant or withhold an approval within the scope the principal actually holds. Never widens that scope.",
+      "operations": 3
+    },
+    {
+      "id": "billing:read",
+      "description": "Read plan, usage and meter state.",
+      "operations": 1
+    },
+    {
+      "id": "billing:write",
+      "description": "Change plan or manage billing configuration.",
+      "operations": 1
+    },
+    {
+      "id": "counterparties:read",
+      "description": "Read counterparties and the evidence they have supplied.",
+      "operations": 1
+    },
+    {
+      "id": "counterparties:write",
+      "description": "Invite counterparties and manage their obligations.",
+      "operations": 1
+    },
+    {
+      "id": "evidence:write",
+      "description": "Submit evidence against a counterparty obligation.",
+      "operations": 2
+    },
+    {
+      "id": "findings:read",
+      "description": "Read findings raised by a run.",
+      "operations": 1
+    },
+    {
+      "id": "findings:write",
+      "description": "Waive or annotate a finding. A blocking finding can only be waived by a principal holding the approval authority for that market.",
+      "operations": 1
+    },
+    {
+      "id": "manifests:read",
+      "description": "Read packaging manifests and their per-market matrices.",
+      "operations": 3
+    },
+    {
+      "id": "manifests:write",
+      "description": "Create and amend manifests. A manifest in an approved state cannot be amended without superseding it.",
+      "operations": 2
+    },
+    {
+      "id": "packs:read",
+      "description": "Read rule packs and the rules inside them. Read-only: packs are authored in the repo, never through the API.",
+      "operations": 3
+    },
+    {
+      "id": "products:read",
+      "description": "Read this tenant's products and their classification.",
+      "operations": 2
+    },
+    {
+      "id": "products:write",
+      "description": "Create and amend products. Amending a classified product re-opens the checks that depended on the classification.",
+      "operations": 2
+    },
+    {
+      "id": "releases:read",
+      "description": "Read print releases and verify one from its public reference.",
+      "operations": 1
+    },
+    {
+      "id": "releases:write",
+      "description": "Cut a print release. Refused unless every blocking finding for the target markets is resolved or waived.",
+      "operations": 1
+    },
+    {
+      "id": "runs:read",
+      "description": "Read compliance runs and their results.",
+      "operations": 2
+    },
+    {
+      "id": "runs:write",
+      "description": "Start a compliance run against a manifest.",
+      "operations": 1
+    }
+  ],
+  "api_tags": [
+    {
+      "id": "approvals",
+      "description": "Sign-off, bounded by the scope the approver actually holds. An approval never widens itself.",
+      "operations": 3
+    },
+    {
+      "id": "billing",
+      "description": "Plan, usage and meters. Read your consumption before it surprises you.",
+      "operations": 2
+    },
+    {
+      "id": "compliance-runs",
+      "description": "Running a manifest against the packs its markets require. A run is the unit of evidence.",
+      "operations": 3
+    },
+    {
+      "id": "counterparties",
+      "description": "Suppliers and converters, and the obligations you have placed on them.",
+      "operations": 2
+    },
+    {
+      "id": "evidence",
+      "description": "What counterparties supply against those obligations — certificates, declarations, test reports.",
+      "operations": 2
+    },
+    {
+      "id": "findings",
+      "description": "What a run found. A blocking finding stops a release until it is resolved or waived by someone holding that authority.",
+      "operations": 2
+    },
+    {
+      "id": "jurisdictions",
+      "description": "The markets PackAuth covers, and the ones it does not. A market that is not covered says so rather than passing.",
+      "operations": 1
+    },
+    {
+      "id": "manifests",
+      "description": "A packaging manifest is one product's artwork, materials and claims at a point in time. Everything downstream refers to one.",
+      "operations": 5
+    },
+    {
+      "id": "packs",
+      "description": "Rule packs are the regulations, written as checks. Read-only over the API: they are authored in the repo and versioned there, so a run is reproducible.",
+      "operations": 2
+    },
+    {
+      "id": "print-releases",
+      "description": "The artefact a printer acts on. It records what was checked, against which pack version, by whom — and can be verified later from its reference alone.",
+      "operations": 3
+    },
+    {
+      "id": "products",
+      "description": "The things you sell. Classification happens here, and it decides which rule packs a manifest is measured against.",
+      "operations": 4
+    },
+    {
+      "id": "service",
+      "description": "Liveness. Public, and the one call you can make before you have a token.",
+      "operations": 1
+    },
+    {
+      "id": "stripe",
+      "description": "Payment webhooks. Called by Stripe, not by you.",
+      "operations": 1
+    }
+  ],
+  "operations": [
+    {
+      "operation_id": "health",
+      "method": "GET",
+      "path": "/health",
+      "scope": null,
+      "public": true,
+      "path_params": [],
+      "summary": "Liveness and whether a decision engine is configured. Public."
+    },
+    {
+      "operation_id": "list_packs",
+      "method": "GET",
+      "path": "/v1/packs",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Every pack in the catalogue, each flagged with whether this tenant is entitled to it."
+    },
+    {
+      "operation_id": "get_pack",
+      "method": "GET",
+      "path": "/v1/packs/:pack_id",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [
+        "pack_id"
+      ],
+      "summary": "One pack, including its rules count and price code."
+    },
+    {
+      "operation_id": "list_jurisdictions",
+      "method": "GET",
+      "path": "/v1/jurisdictions",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Every market PackAuth can classify, with its coverage status stated honestly."
+    },
+    {
+      "operation_id": "create_product",
+      "method": "POST",
+      "path": "/v1/products",
+      "scope": "products:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Register a product. Unclassified until classify is called."
+    },
+    {
+      "operation_id": "list_products",
+      "method": "GET",
+      "path": "/v1/products",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [],
+      "summary": "This tenant's products."
+    },
+    {
+      "operation_id": "get_product",
+      "method": "GET",
+      "path": "/v1/products/:product_id",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [
+        "product_id"
+      ],
+      "summary": "One product with its classification and declared claims."
+    },
+    {
+      "operation_id": "classify_product",
+      "method": "POST",
+      "path": "/v1/products/:product_id/classify",
+      "scope": "products:write",
+      "public": false,
+      "path_params": [
+        "product_id"
+      ],
+      "summary": "Classify a product to a category path and sector. Nothing resolves a pack until this succeeds."
+    },
+    {
+      "operation_id": "create_manifest",
+      "method": "POST",
+      "path": "/v1/manifests",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Open a packaging manifest against a product. The manifest is the unit a run and an approval attach to."
+    },
+    {
+      "operation_id": "get_manifest",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "One manifest with its lifecycle state."
+    },
+    {
+      "operation_id": "add_market",
+      "method": "POST",
+      "path": "/v1/manifests/:manifest_id/markets",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Add a target market. Resolves upward through the jurisdiction hierarchy."
+    },
+    {
+      "operation_id": "manifest_status",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/status",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "The manifest's lifecycle state and what is blocking the next transition."
+    },
+    {
+      "operation_id": "manifest_matrix",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/matrix",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Per-market releasability: which markets can print today, and what stops the rest."
+    },
+    {
+      "operation_id": "create_run",
+      "method": "POST",
+      "path": "/v1/compliance-runs",
+      "scope": "runs:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Run every resolved rule against the manifest. Deterministic and replayable."
+    },
+    {
+      "operation_id": "get_run",
+      "method": "GET",
+      "path": "/v1/compliance-runs/:run_id",
+      "scope": "runs:read",
+      "public": false,
+      "path_params": [
+        "run_id"
+      ],
+      "summary": "One run with its replay context."
+    },
+    {
+      "operation_id": "run_findings",
+      "method": "GET",
+      "path": "/v1/compliance-runs/:run_id/findings",
+      "scope": "runs:read",
+      "public": false,
+      "path_params": [
+        "run_id"
+      ],
+      "summary": "Every finding the run raised, with severity and the rule that raised it."
+    },
+    {
+      "operation_id": "list_findings",
+      "method": "GET",
+      "path": "/v1/findings",
+      "scope": "findings:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Open findings across this tenant."
+    },
+    {
+      "operation_id": "resolve_finding",
+      "method": "POST",
+      "path": "/v1/findings/:finding_id/resolve",
+      "scope": "findings:write",
+      "public": false,
+      "path_params": [
+        "finding_id"
+      ],
+      "summary": "Record a finding as resolved, with who decided and on what basis."
+    },
+    {
+      "operation_id": "create_evidence",
+      "method": "POST",
+      "path": "/v1/evidence",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Attach an evidence document to a counterparty or product."
+    },
+    {
+      "operation_id": "validate_evidence",
+      "method": "POST",
+      "path": "/v1/evidence/:evidence_id/validate",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [
+        "evidence_id"
+      ],
+      "summary": "Record a human sufficiency decision on an evidence item."
+    },
+    {
+      "operation_id": "create_counterparty",
+      "method": "POST",
+      "path": "/v1/counterparties",
+      "scope": "counterparties:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Register a supplier, laboratory, certifier, printer or distributor."
+    },
+    {
+      "operation_id": "get_counterparty",
+      "method": "GET",
+      "path": "/v1/counterparties/:counterparty_id",
+      "scope": "counterparties:read",
+      "public": false,
+      "path_params": [
+        "counterparty_id"
+      ],
+      "summary": "One counterparty with the evidence its type and risk level require."
+    },
+    {
+      "operation_id": "request_approval",
+      "method": "POST",
+      "path": "/v1/approvals/request",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Ask a named approver for a scoped approval."
+    },
+    {
+      "operation_id": "approve_approval",
+      "method": "POST",
+      "path": "/v1/approvals/:approval_id/approve",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [
+        "approval_id"
+      ],
+      "summary": "Grant an approval. Locks an immutable evidence snapshot."
+    },
+    {
+      "operation_id": "revoke_approval",
+      "method": "POST",
+      "path": "/v1/approvals/:approval_id/revoke",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [
+        "approval_id"
+      ],
+      "summary": "Revoke a live approval. Everything relying on it goes stale."
+    },
+    {
+      "operation_id": "create_print_release",
+      "method": "POST",
+      "path": "/v1/print-releases",
+      "scope": "releases:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Issue a print release against a live approval and a pinned artwork hash."
+    },
+    {
+      "operation_id": "get_release",
+      "method": "GET",
+      "path": "/v1/print-releases/:release_id",
+      "scope": "releases:read",
+      "public": false,
+      "path_params": [
+        "release_id"
+      ],
+      "summary": "One release certificate."
+    },
+    {
+      "operation_id": "verify_release",
+      "method": "GET",
+      "path": "/v1/print-releases/:release_id/verify",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "release_id"
+      ],
+      "summary": "Verify a release certificate from its id alone. Public — this is the link a printer follows."
+    },
+    {
+      "operation_id": "list_entitlements",
+      "method": "GET",
+      "path": "/v1/billing/entitlements",
+      "scope": "billing:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Which packs this tenant currently holds."
+    },
+    {
+      "operation_id": "create_checkout",
+      "method": "POST",
+      "path": "/v1/billing/checkout",
+      "scope": "billing:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Open a Stripe checkout for a pack or plan."
+    },
+    {
+      "operation_id": "stripe_webhook",
+      "method": "POST",
+      "path": "/v1/stripe/webhook",
+      "scope": null,
+      "public": true,
+      "path_params": [],
+      "summary": "Stripe event intake. Public, signature-verified."
+    }
+  ]
+}
