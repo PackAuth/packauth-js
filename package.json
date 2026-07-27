@@ -1,0 +1,35 @@
+{
+  "name": "@packauth/sdk",
+  "version": "0.1.0",
+  "description": "PackAuth API client and CLI. Every method and every command is derived from the canonical operation registry, so the SDK cannot fall behind the API it covers.",
+  "type": "module",
+  "main": "src/client.mjs",
+  "exports": {
+    ".": "./src/client.mjs"
+  },
+  "bin": {
+    "packauth": "bin/packauth.mjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "api.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "packauth",
+    "packaging",
+    "compliance",
+    "labelling",
+    "sdk",
+    "cli"
+  ],
+  "license": "Apache-2.0"
+}
