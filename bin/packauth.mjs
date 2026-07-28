@@ -19,6 +19,7 @@
  */
 import { PackAuth, PackAuthError, methodName } from "../src/client.mjs";
 import api from "../api.json" with { type: "json" };
+import { resolve as resolveEnv } from "../src/environment.mjs";
 
 const argv = process.argv.slice(2);
 const BOLD = "[1m";
@@ -62,8 +63,17 @@ ${b("Usage")}
 
 ${b("Auth")}
   PACKAUTH_TOKEN=<token>   or   --token <token>
-  ${d("Three commands are public and need no token: " +
-     api.operations.filter((o) => o.public).map((o) => commandName(o.operation_id)).join(", "))}
+  ${d(
+    (() => {
+      // The COUNT is derived too. It said "Three" beside a list of four,
+      // because the list came from the registry and the number was typed —
+      // which is the shape of every drift bug in this repository, in one line
+      // of help text.
+      const pub = api.operations.filter((o) => o.public).map((o) => commandName(o.operation_id));
+      return `${pub.length} command${pub.length === 1 ? "" : "s"} ${pub.length === 1 ? "is" : "are"} ` +
+        `public and need no token: ${pub.join(", ")}`;
+    })()
+  )}
 
 ${b("Commands")}   ${d(`${api.operations.length} operations, derived from spec/registries/api.json`)}
 `);
@@ -109,8 +119,22 @@ async function main() {
     fail(`no command '${cmd}'${near.length ? `. Did you mean: ${near.slice(0, 4).join(", ")}?` : ". Run `packauth help`."}`);
   }
 
-  const token = flags.token ?? process.env.PACKAUTH_TOKEN ?? null;
-  const baseUrl = flags.base_url ?? process.env.PACKAUTH_API_URL ?? undefined;
+  /*
+   * One resolver, shared with the SDK, the smoke test and the corpus MCP
+   * server. Reading the two names separately here is what allowed a sandbox
+   * key to default to the production host: the CLI is the client most likely
+   * to be pointed at the wrong plane, because it is the one a person drives
+   * from a shell they configured an hour ago.
+   */
+  let env;
+  try {
+    env = resolveEnv();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+  const baseUrl = flags.base_url ?? env.baseUrl ?? undefined;
+  const token = flags.token ?? env.token ?? null;
 
   let body;
   if (flags.body !== undefined) {
