@@ -199,6 +199,11 @@
       "operations": 2
     },
     {
+      "id": "portal",
+      "description": "The counterparty side. A supplier, printer or certifier holds no API key — they hold a request token that names exactly one request, and these two operations are everything that token can do. They see what was asked of them and what they filed against it; not the manifest, not the findings, not another counterparty, not the brand's other products (chapter 10 §4).",
+      "operations": 2
+    },
+    {
       "id": "print-releases",
       "description": "The artefact a printer acts on. It records what was checked, against which pack version, by whom — and can be verified later from its reference alone.",
       "operations": 4
@@ -880,6 +885,28 @@
       "public": false,
       "path_params": [],
       "summary": "Outstanding evidence requests and what each counterparty still owes."
+    },
+    {
+      "operation_id": "get_portal_request",
+      "method": "GET",
+      "path": "/v1/portal/requests/:portal_token",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "portal_token"
+      ],
+      "summary": "What a counterparty is being asked for, resolved from the request token alone. Public — the supplier holds no API key, and this is the link in the email."
+    },
+    {
+      "operation_id": "submit_portal_evidence",
+      "method": "POST",
+      "path": "/v1/portal/requests/:portal_token/evidence",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "portal_token"
+      ],
+      "summary": "A counterparty files a document against the request made of them. Public by token; the token names one request and grants nothing else."
     },
     {
       "operation_id": "list_frameworks",
