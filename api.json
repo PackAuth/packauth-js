@@ -77,6 +77,11 @@
       "operations": 10
     },
     {
+      "id": "platform:read",
+      "description": "Read across tenants as a PackAuth operator. The only scope in the system that is not bounded by a tenant, held only by operator keys, and every read it permits writes an audit row into the read tenant's own stream before the data is returned.",
+      "operations": 3
+    },
+    {
       "id": "products:read",
       "description": "Read this tenant's products and their classification.",
       "operations": 9
@@ -108,6 +113,11 @@
     }
   ],
   "api_tags": [
+    {
+      "id": "admin",
+      "description": "The operator console. The only surface that reads across tenants, and therefore the only one where every read is itself audited — into the audit stream of the tenant that was read, so the customer sees it too.",
+      "operations": 3
+    },
     {
       "id": "approvals",
       "description": "Sign-off, bounded by the scope the approver actually holds. An approval never widens itself.",
@@ -280,212 +290,152 @@
       "summary": "Liveness and whether a decision engine is configured. Public."
     },
     {
-      "operation_id": "list_packs",
+      "operation_id": "list_tenants",
       "method": "GET",
-      "path": "/v1/packs",
-      "scope": "packs:read",
+      "path": "/v1/admin/tenants",
+      "scope": "platform:read",
       "public": false,
+      "principal": "operator",
       "path_params": [],
-      "summary": "Every pack in the catalogue, each flagged with whether this tenant is entitled to it."
+      "summary": "The tenant directory. Every tenant returned is recorded in that tenant's own audit stream — enumerating customers is a read of each of them."
     },
     {
-      "operation_id": "get_pack",
+      "operation_id": "get_tenant",
       "method": "GET",
-      "path": "/v1/packs/:pack_id",
-      "scope": "packs:read",
+      "path": "/v1/admin/tenants/:tenant_id",
+      "scope": "platform:read",
+      "public": false,
+      "principal": "operator",
+      "path_params": [
+        "tenant_id"
+      ],
+      "summary": "One tenant's account row. The audit row naming the operator, the tenant and the stated reason is written before the read, so a read that cannot be recorded does not happen."
+    },
+    {
+      "operation_id": "list_tenant_records",
+      "method": "GET",
+      "path": "/v1/admin/tenants/:tenant_id/records",
+      "scope": "platform:read",
+      "public": false,
+      "principal": "operator",
+      "path_params": [
+        "tenant_id"
+      ],
+      "summary": "Rows from one readable table for one tenant, for support and incident work. The readable set is short on purpose: a console that can reach every table is a tenant key with extra steps."
+    },
+    {
+      "operation_id": "list_approvals",
+      "method": "GET",
+      "path": "/v1/approvals",
+      "scope": "approvals:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Approvals raised by this tenant, newest first. Filter by manifest_id, scope or status."
+    },
+    {
+      "operation_id": "get_approval",
+      "method": "GET",
+      "path": "/v1/approvals/:approval_id",
+      "scope": "approvals:read",
       "public": false,
       "path_params": [
-        "pack_id"
+        "approval_id"
       ],
-      "summary": "One pack, including its rules count and price code."
+      "summary": "One approval with the exact basis it was taken on: artwork hash, evidence snapshot, pack and dictionary versions, and the decision reference."
     },
     {
-      "operation_id": "list_jurisdictions",
-      "method": "GET",
-      "path": "/v1/jurisdictions",
-      "scope": "packs:read",
+      "operation_id": "approve_approval",
+      "method": "POST",
+      "path": "/v1/approvals/:approval_id/approve",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [
+        "approval_id"
+      ],
+      "summary": "Grant an approval. Locks an immutable evidence snapshot."
+    },
+    {
+      "operation_id": "revoke_approval",
+      "method": "POST",
+      "path": "/v1/approvals/:approval_id/revoke",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [
+        "approval_id"
+      ],
+      "summary": "Revoke a live approval. Everything relying on it goes stale."
+    },
+    {
+      "operation_id": "request_approval",
+      "method": "POST",
+      "path": "/v1/approvals/request",
+      "scope": "approvals:write",
       "public": false,
       "path_params": [],
-      "summary": "Every market PackAuth can classify, with its coverage status stated honestly."
+      "summary": "Ask a named approver for a scoped approval."
     },
     {
-      "operation_id": "create_product",
+      "operation_id": "list_audit_events",
+      "method": "GET",
+      "path": "/v1/audit-events",
+      "scope": "findings:read",
+      "public": false,
+      "path_params": [],
+      "summary": "The audit trail: every governed action, its actor, its engine decision and its outcome, filterable by object and period."
+    },
+    {
+      "operation_id": "create_checkout",
       "method": "POST",
-      "path": "/v1/products",
+      "path": "/v1/billing/checkout",
+      "scope": "billing:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Open a Stripe checkout for a pack or plan."
+    },
+    {
+      "operation_id": "list_entitlements",
+      "method": "GET",
+      "path": "/v1/billing/entitlements",
+      "scope": "billing:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Which packs this tenant currently holds."
+    },
+    {
+      "operation_id": "usage_summary",
+      "method": "GET",
+      "path": "/v1/billing/usage",
+      "scope": "billing:read",
+      "public": false,
+      "path_params": [],
+      "summary": "What has been metered, what has been billed to Stripe, and what is still waiting — per meter, for a period."
+    },
+    {
+      "operation_id": "list_change_events",
+      "method": "GET",
+      "path": "/v1/change-events",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Material changes detected against manifests, and whether each one has been applied to the approvals it affects."
+    },
+    {
+      "operation_id": "list_claims",
+      "method": "GET",
+      "path": "/v1/claims",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [],
+      "summary": "List declared claims, optionally filtered to one product."
+    },
+    {
+      "operation_id": "create_claim",
+      "method": "POST",
+      "path": "/v1/claims",
       "scope": "products:write",
       "public": false,
       "path_params": [],
-      "summary": "Register a product. Unclassified until classify is called."
-    },
-    {
-      "operation_id": "list_workspaces",
-      "method": "GET",
-      "path": "/v1/workspaces",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [],
-      "summary": "This tenant's workspaces. Every product belongs to one, so this is where an integration starts."
-    },
-    {
-      "operation_id": "list_products",
-      "method": "GET",
-      "path": "/v1/products",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [],
-      "summary": "This tenant's products."
-    },
-    {
-      "operation_id": "get_product",
-      "method": "GET",
-      "path": "/v1/products/:product_id",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [
-        "product_id"
-      ],
-      "summary": "One product with its classification and declared claims."
-    },
-    {
-      "operation_id": "classify_product",
-      "method": "POST",
-      "path": "/v1/products/:product_id/classify",
-      "scope": "products:write",
-      "public": false,
-      "path_params": [
-        "product_id"
-      ],
-      "summary": "Classify a product to a category path and sector. Nothing resolves a pack until this succeeds."
-    },
-    {
-      "operation_id": "list_manifests",
-      "method": "GET",
-      "path": "/v1/manifests",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [],
-      "summary": "This tenant's packaging manifests. Filter by workspace_id or product_id."
-    },
-    {
-      "operation_id": "create_manifest",
-      "method": "POST",
-      "path": "/v1/manifests",
-      "scope": "manifests:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Open a packaging manifest against a product. The manifest is the unit a run and an approval attach to."
-    },
-    {
-      "operation_id": "attach_artwork",
-      "method": "POST",
-      "path": "/v1/manifests/:manifest_id/artwork",
-      "scope": "manifests:write",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "Attach a canonicalised artwork version to a manifest. Extraction happens upstream; PackAuth consumes its output and checks it."
-    },
-    {
-      "operation_id": "list_manifest_artwork",
-      "method": "GET",
-      "path": "/v1/manifests/:manifest_id/artwork",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "Every artwork version attached to this manifest, newest first."
-    },
-    {
-      "operation_id": "upload_artwork_file",
-      "method": "PUT",
-      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
-      "scope": "manifests:write",
-      "public": false,
-      "path_params": [
-        "manifest_id",
-        "artwork_version_id"
-      ],
-      "summary": "Store the artwork original. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the attached version — the file_hash on a release is only a fact if PackAuth held the file."
-    },
-    {
-      "operation_id": "get_artwork_file",
-      "method": "GET",
-      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [
-        "manifest_id",
-        "artwork_version_id"
-      ],
-      "summary": "Retrieve the stored artwork original for this version."
-    },
-    {
-      "operation_id": "upload_evidence_file",
-      "method": "PUT",
-      "path": "/v1/evidence/:evidence_id/file",
-      "scope": "evidence:write",
-      "public": false,
-      "path_params": [
-        "evidence_id"
-      ],
-      "summary": "Store the evidence document. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the record."
-    },
-    {
-      "operation_id": "get_evidence_file",
-      "method": "GET",
-      "path": "/v1/evidence/:evidence_id/file",
-      "scope": "evidence:read",
-      "public": false,
-      "path_params": [
-        "evidence_id"
-      ],
-      "summary": "Retrieve the stored evidence document."
-    },
-    {
-      "operation_id": "get_manifest",
-      "method": "GET",
-      "path": "/v1/manifests/:manifest_id",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "One manifest with its lifecycle state."
-    },
-    {
-      "operation_id": "add_market",
-      "method": "POST",
-      "path": "/v1/manifests/:manifest_id/markets",
-      "scope": "manifests:write",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "Add a target market. Resolves upward through the jurisdiction hierarchy."
-    },
-    {
-      "operation_id": "manifest_status",
-      "method": "GET",
-      "path": "/v1/manifests/:manifest_id/status",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "The manifest's lifecycle state and what is blocking the next transition."
-    },
-    {
-      "operation_id": "manifest_matrix",
-      "method": "GET",
-      "path": "/v1/manifests/:manifest_id/matrix",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "Per-market releasability: which markets can print today, and what stops the rest."
+      "summary": "Declare a marketing or certification claim made for a product, so substantiation can be required against it."
     },
     {
       "operation_id": "list_compliance_runs",
@@ -528,55 +478,6 @@
       "summary": "Every finding the run raised, with severity and the rule that raised it."
     },
     {
-      "operation_id": "list_findings",
-      "method": "GET",
-      "path": "/v1/findings",
-      "scope": "findings:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Open findings across this tenant."
-    },
-    {
-      "operation_id": "resolve_finding",
-      "method": "POST",
-      "path": "/v1/findings/:finding_id/resolve",
-      "scope": "findings:write",
-      "public": false,
-      "path_params": [
-        "finding_id"
-      ],
-      "summary": "Record a finding as resolved, with who decided and on what basis."
-    },
-    {
-      "operation_id": "list_evidence",
-      "method": "GET",
-      "path": "/v1/evidence",
-      "scope": "counterparties:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Evidence supplied against counterparty obligations. Filter by counterparty_id."
-    },
-    {
-      "operation_id": "create_evidence",
-      "method": "POST",
-      "path": "/v1/evidence",
-      "scope": "evidence:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Attach an evidence document to a counterparty or product."
-    },
-    {
-      "operation_id": "validate_evidence",
-      "method": "POST",
-      "path": "/v1/evidence/:evidence_id/validate",
-      "scope": "evidence:write",
-      "public": false,
-      "path_params": [
-        "evidence_id"
-      ],
-      "summary": "Record a human sufficiency decision on an evidence item."
-    },
-    {
       "operation_id": "list_counterparties",
       "method": "GET",
       "path": "/v1/counterparties",
@@ -606,55 +507,395 @@
       "summary": "One counterparty with the evidence its type and risk level require."
     },
     {
-      "operation_id": "list_approvals",
+      "operation_id": "approve_counterparty",
+      "method": "POST",
+      "path": "/v1/counterparties/:counterparty_id/approve",
+      "scope": "counterparties:write",
+      "public": false,
+      "path_params": [
+        "counterparty_id"
+      ],
+      "summary": "Approve a counterparty for a named scope of markets and product classes, once its required evidence is complete."
+    },
+    {
+      "operation_id": "request_evidence",
+      "method": "POST",
+      "path": "/v1/counterparties/:counterparty_id/request-evidence",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [
+        "counterparty_id"
+      ],
+      "summary": "Request the evidence a counterparty still owes, issuing a single-use portal token they can upload against."
+    },
+    {
+      "operation_id": "coverage_report",
       "method": "GET",
-      "path": "/v1/approvals",
-      "scope": "approvals:read",
+      "path": "/v1/coverage",
+      "scope": "packs:read",
       "public": false,
       "path_params": [],
-      "summary": "Approvals raised by this tenant, newest first. Filter by manifest_id, scope or status."
+      "summary": "What PackAuth does and does not check, per jurisdiction and duty class, so partial coverage is legible before a release rather than after."
     },
     {
-      "operation_id": "get_approval",
+      "operation_id": "list_duty_classes",
       "method": "GET",
-      "path": "/v1/approvals/:approval_id",
-      "scope": "approvals:read",
-      "public": false,
-      "path_params": [
-        "approval_id"
-      ],
-      "summary": "One approval with the exact basis it was taken on: artwork hash, evidence snapshot, pack and dictionary versions, and the decision reference."
-    },
-    {
-      "operation_id": "request_approval",
-      "method": "POST",
-      "path": "/v1/approvals/request",
-      "scope": "approvals:write",
+      "path": "/v1/duty-classes",
+      "scope": "packs:read",
       "public": false,
       "path_params": [],
-      "summary": "Ask a named approver for a scoped approval."
+      "summary": "Every class of labelling duty, and for each one which jurisdictions impose it, which frameworks declare it, and whether PackAuth enforces it."
     },
     {
-      "operation_id": "approve_approval",
-      "method": "POST",
-      "path": "/v1/approvals/:approval_id/approve",
-      "scope": "approvals:write",
+      "operation_id": "list_evidence",
+      "method": "GET",
+      "path": "/v1/evidence",
+      "scope": "counterparties:read",
       "public": false,
-      "path_params": [
-        "approval_id"
-      ],
-      "summary": "Grant an approval. Locks an immutable evidence snapshot."
+      "path_params": [],
+      "summary": "Evidence supplied against counterparty obligations. Filter by counterparty_id."
     },
     {
-      "operation_id": "revoke_approval",
+      "operation_id": "create_evidence",
       "method": "POST",
-      "path": "/v1/approvals/:approval_id/revoke",
-      "scope": "approvals:write",
+      "path": "/v1/evidence",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Attach an evidence document to a counterparty or product."
+    },
+    {
+      "operation_id": "list_evidence_requests",
+      "method": "GET",
+      "path": "/v1/evidence-requests",
+      "scope": "evidence:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Outstanding evidence requests and what each counterparty still owes."
+    },
+    {
+      "operation_id": "get_evidence_file",
+      "method": "GET",
+      "path": "/v1/evidence/:evidence_id/file",
+      "scope": "evidence:read",
       "public": false,
       "path_params": [
-        "approval_id"
+        "evidence_id"
       ],
-      "summary": "Revoke a live approval. Everything relying on it goes stale."
+      "summary": "Retrieve the stored evidence document."
+    },
+    {
+      "operation_id": "upload_evidence_file",
+      "method": "PUT",
+      "path": "/v1/evidence/:evidence_id/file",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [
+        "evidence_id"
+      ],
+      "summary": "Store the evidence document. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the record."
+    },
+    {
+      "operation_id": "validate_evidence",
+      "method": "POST",
+      "path": "/v1/evidence/:evidence_id/validate",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [
+        "evidence_id"
+      ],
+      "summary": "Record a human sufficiency decision on an evidence item."
+    },
+    {
+      "operation_id": "list_findings",
+      "method": "GET",
+      "path": "/v1/findings",
+      "scope": "findings:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Open findings across this tenant."
+    },
+    {
+      "operation_id": "remediate_finding",
+      "method": "POST",
+      "path": "/v1/findings/:finding_id/remediate",
+      "scope": "findings:write",
+      "public": false,
+      "path_params": [
+        "finding_id"
+      ],
+      "summary": "Record a remediation against a finding — what was changed or, for a finding that requires human review, the reviewer's decision and its rationale."
+    },
+    {
+      "operation_id": "resolve_finding",
+      "method": "POST",
+      "path": "/v1/findings/:finding_id/resolve",
+      "scope": "findings:write",
+      "public": false,
+      "path_params": [
+        "finding_id"
+      ],
+      "summary": "Record a finding as resolved, with who decided and on what basis."
+    },
+    {
+      "operation_id": "list_formula_specs",
+      "method": "GET",
+      "path": "/v1/formula-specs",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [],
+      "summary": "List formula specifications, most recent first, optionally filtered to one product."
+    },
+    {
+      "operation_id": "create_formula_spec",
+      "method": "POST",
+      "path": "/v1/formula-specs",
+      "scope": "products:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Record a formula specification for a product — ingredients, declared allergens and the structured composition the compositional rules read."
+    },
+    {
+      "operation_id": "list_frameworks",
+      "method": "GET",
+      "path": "/v1/frameworks",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [],
+      "summary": "The regulations PackAuth has ingested — jurisdiction, domain, clause count, and how many of its duties are actually enforced."
+    },
+    {
+      "operation_id": "get_framework",
+      "method": "GET",
+      "path": "/v1/frameworks/:framework_id",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [
+        "framework_id"
+      ],
+      "summary": "One regulation: its requirements, which are enforced, which are deferred with a deadline, and which are out of scope with a reason."
+    },
+    {
+      "operation_id": "list_framework_clauses",
+      "method": "GET",
+      "path": "/v1/frameworks/:framework_id/clauses",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [
+        "framework_id"
+      ],
+      "summary": "The clauses retrieved from a regulation, with the source URL and content hash that make each citation checkable."
+    },
+    {
+      "operation_id": "get_clause",
+      "method": "GET",
+      "path": "/v1/frameworks/:framework_id/clauses/:section",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [
+        "framework_id",
+        "section"
+      ],
+      "summary": "One clause, with its retrieval provenance and every requirement and rule that rests on it. The reverse of a finding: start from the law and see what PackAuth does about it."
+    },
+    {
+      "operation_id": "list_jurisdictions",
+      "method": "GET",
+      "path": "/v1/jurisdictions",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Every market PackAuth can classify, with its coverage status stated honestly."
+    },
+    {
+      "operation_id": "list_manifests",
+      "method": "GET",
+      "path": "/v1/manifests",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [],
+      "summary": "This tenant's packaging manifests. Filter by workspace_id or product_id."
+    },
+    {
+      "operation_id": "create_manifest",
+      "method": "POST",
+      "path": "/v1/manifests",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Open a packaging manifest against a product. The manifest is the unit a run and an approval attach to."
+    },
+    {
+      "operation_id": "get_manifest",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "One manifest with its lifecycle state."
+    },
+    {
+      "operation_id": "list_manifest_artwork",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/artwork",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Every artwork version attached to this manifest, newest first."
+    },
+    {
+      "operation_id": "attach_artwork",
+      "method": "POST",
+      "path": "/v1/manifests/:manifest_id/artwork",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Attach a canonicalised artwork version to a manifest. Extraction happens upstream; PackAuth consumes its output and checks it."
+    },
+    {
+      "operation_id": "get_artwork_file",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id",
+        "artwork_version_id"
+      ],
+      "summary": "Retrieve the stored artwork original for this version."
+    },
+    {
+      "operation_id": "upload_artwork_file",
+      "method": "PUT",
+      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id",
+        "artwork_version_id"
+      ],
+      "summary": "Store the artwork original. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the attached version — the file_hash on a release is only a fact if PackAuth held the file."
+    },
+    {
+      "operation_id": "bind_manifest",
+      "method": "POST",
+      "path": "/v1/manifests/:manifest_id/bind",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Bind a formula specification, packaging configuration or variant to a manifest so its rules have something to read."
+    },
+    {
+      "operation_id": "add_market",
+      "method": "POST",
+      "path": "/v1/manifests/:manifest_id/markets",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Add a target market. Resolves upward through the jurisdiction hierarchy."
+    },
+    {
+      "operation_id": "manifest_matrix",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/matrix",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "Per-market releasability: which markets can print today, and what stops the rest."
+    },
+    {
+      "operation_id": "manifest_status",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/status",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id"
+      ],
+      "summary": "The manifest's lifecycle state and what is blocking the next transition."
+    },
+    {
+      "operation_id": "list_packaging",
+      "method": "GET",
+      "path": "/v1/packaging",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [],
+      "summary": "List packaging configurations, optionally filtered to one product."
+    },
+    {
+      "operation_id": "create_packaging",
+      "method": "POST",
+      "path": "/v1/packaging",
+      "scope": "products:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Record a packaging configuration and its components, each with the material it is made of and the supplier who converts it."
+    },
+    {
+      "operation_id": "list_packaging_components",
+      "method": "GET",
+      "path": "/v1/packaging/:packaging_id/components",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [
+        "packaging_id"
+      ],
+      "summary": "List the components of one packaging configuration with their materials and suppliers."
+    },
+    {
+      "operation_id": "list_packs",
+      "method": "GET",
+      "path": "/v1/packs",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Every pack in the catalogue, each flagged with whether this tenant is entitled to it."
+    },
+    {
+      "operation_id": "get_pack",
+      "method": "GET",
+      "path": "/v1/packs/:pack_id",
+      "scope": "packs:read",
+      "public": false,
+      "path_params": [
+        "pack_id"
+      ],
+      "summary": "One pack, including its rules count and price code."
+    },
+    {
+      "operation_id": "get_portal_request",
+      "method": "GET",
+      "path": "/v1/portal/requests/:portal_token",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "portal_token"
+      ],
+      "summary": "What a counterparty is being asked for, resolved from the request token alone. Public — the supplier holds no API key, and this is the link in the email."
+    },
+    {
+      "operation_id": "submit_portal_evidence",
+      "method": "POST",
+      "path": "/v1/portal/requests/:portal_token/evidence",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "portal_token"
+      ],
+      "summary": "A counterparty files a document against the request made of them. Public by token; the token names one request and grants nothing else."
     },
     {
       "operation_id": "list_print_releases",
@@ -697,125 +938,13 @@
       "summary": "Verify a release certificate from its id alone. Public — this is the link a printer follows."
     },
     {
-      "operation_id": "list_entitlements",
+      "operation_id": "list_product_variants",
       "method": "GET",
-      "path": "/v1/billing/entitlements",
-      "scope": "billing:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Which packs this tenant currently holds."
-    },
-    {
-      "operation_id": "create_checkout",
-      "method": "POST",
-      "path": "/v1/billing/checkout",
-      "scope": "billing:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Open a Stripe checkout for a pack or plan."
-    },
-    {
-      "operation_id": "stripe_webhook",
-      "method": "POST",
-      "path": "/v1/stripe/webhook",
-      "scope": null,
-      "public": true,
-      "path_params": [],
-      "summary": "Stripe event intake. Public, signature-verified."
-    },
-    {
-      "operation_id": "create_webhook_endpoint",
-      "method": "POST",
-      "path": "/v1/webhook-endpoints",
-      "scope": "billing:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Register a URL to receive events. The signing secret is returned once and stored only as a hash."
-    },
-    {
-      "operation_id": "list_webhook_endpoints",
-      "method": "GET",
-      "path": "/v1/webhook-endpoints",
-      "scope": "billing:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Registered endpoints, their subscribed event types and delivery status. Never the secret."
-    },
-    {
-      "operation_id": "create_formula_spec",
-      "method": "POST",
-      "path": "/v1/formula-specs",
-      "scope": "products:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Record a formula specification for a product — ingredients, declared allergens and the structured composition the compositional rules read."
-    },
-    {
-      "operation_id": "list_formula_specs",
-      "method": "GET",
-      "path": "/v1/formula-specs",
+      "path": "/v1/product-variants",
       "scope": "products:read",
       "public": false,
       "path_params": [],
-      "summary": "List formula specifications, most recent first, optionally filtered to one product."
-    },
-    {
-      "operation_id": "create_packaging",
-      "method": "POST",
-      "path": "/v1/packaging",
-      "scope": "products:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Record a packaging configuration and its components, each with the material it is made of and the supplier who converts it."
-    },
-    {
-      "operation_id": "list_packaging",
-      "method": "GET",
-      "path": "/v1/packaging",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [],
-      "summary": "List packaging configurations, optionally filtered to one product."
-    },
-    {
-      "operation_id": "list_packaging_components",
-      "method": "GET",
-      "path": "/v1/packaging/:packaging_id/components",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [
-        "packaging_id"
-      ],
-      "summary": "List the components of one packaging configuration with their materials and suppliers."
-    },
-    {
-      "operation_id": "create_claim",
-      "method": "POST",
-      "path": "/v1/claims",
-      "scope": "products:write",
-      "public": false,
-      "path_params": [],
-      "summary": "Declare a marketing or certification claim made for a product, so substantiation can be required against it."
-    },
-    {
-      "operation_id": "list_claims",
-      "method": "GET",
-      "path": "/v1/claims",
-      "scope": "products:read",
-      "public": false,
-      "path_params": [],
-      "summary": "List declared claims, optionally filtered to one product."
-    },
-    {
-      "operation_id": "bind_manifest",
-      "method": "POST",
-      "path": "/v1/manifests/:manifest_id/bind",
-      "scope": "manifests:write",
-      "public": false,
-      "path_params": [
-        "manifest_id"
-      ],
-      "summary": "Bind a formula specification, packaging configuration or variant to a manifest so its rules have something to read."
+      "summary": "List product variants, optionally filtered to one product."
     },
     {
       "operation_id": "create_product_variant",
@@ -827,91 +956,44 @@
       "summary": "Record a sellable variant of a product — its SKU, GTIN and pack size, which the barcode and net-quantity checks resolve against."
     },
     {
-      "operation_id": "list_product_variants",
+      "operation_id": "list_products",
       "method": "GET",
-      "path": "/v1/product-variants",
+      "path": "/v1/products",
       "scope": "products:read",
       "public": false,
       "path_params": [],
-      "summary": "List product variants, optionally filtered to one product."
+      "summary": "This tenant's products."
     },
     {
-      "operation_id": "approve_counterparty",
+      "operation_id": "create_product",
       "method": "POST",
-      "path": "/v1/counterparties/:counterparty_id/approve",
-      "scope": "counterparties:write",
-      "public": false,
-      "path_params": [
-        "counterparty_id"
-      ],
-      "summary": "Approve a counterparty for a named scope of markets and product classes, once its required evidence is complete."
-    },
-    {
-      "operation_id": "usage_summary",
-      "method": "GET",
-      "path": "/v1/billing/usage",
-      "scope": "billing:read",
-      "public": false,
-      "path_params": [],
-      "summary": "What has been metered, what has been billed to Stripe, and what is still waiting — per meter, for a period."
-    },
-    {
-      "operation_id": "remediate_finding",
-      "method": "POST",
-      "path": "/v1/findings/:finding_id/remediate",
-      "scope": "findings:write",
-      "public": false,
-      "path_params": [
-        "finding_id"
-      ],
-      "summary": "Record a remediation against a finding — what was changed or, for a finding that requires human review, the reviewer's decision and its rationale."
-    },
-    {
-      "operation_id": "create_stakeholder",
-      "method": "POST",
-      "path": "/v1/stakeholders",
+      "path": "/v1/products",
       "scope": "products:write",
       "public": false,
       "path_params": [],
-      "summary": "Register a person or organisation who can review, approve or supply evidence, with the authority scopes their role carries."
+      "summary": "Register a product. Unclassified until classify is called."
     },
     {
-      "operation_id": "list_stakeholders",
+      "operation_id": "get_product",
       "method": "GET",
-      "path": "/v1/stakeholders",
+      "path": "/v1/products/:product_id",
       "scope": "products:read",
       "public": false,
-      "path_params": [],
-      "summary": "List the stakeholders registered for this tenant and the authority scopes each one holds."
+      "path_params": [
+        "product_id"
+      ],
+      "summary": "One product with its classification and declared claims."
     },
     {
-      "operation_id": "grant_authority",
+      "operation_id": "classify_product",
       "method": "POST",
-      "path": "/v1/stakeholders/:stakeholder_id/authority",
-      "scope": "approvals:write",
+      "path": "/v1/products/:product_id/classify",
+      "scope": "products:write",
       "public": false,
       "path_params": [
-        "stakeholder_id"
+        "product_id"
       ],
-      "summary": "Grant or revoke authority scopes for a stakeholder, beyond the defaults their role carries."
-    },
-    {
-      "operation_id": "list_audit_events",
-      "method": "GET",
-      "path": "/v1/audit-events",
-      "scope": "findings:read",
-      "public": false,
-      "path_params": [],
-      "summary": "The audit trail: every governed action, its actor, its engine decision and its outcome, filterable by object and period."
-    },
-    {
-      "operation_id": "list_change_events",
-      "method": "GET",
-      "path": "/v1/change-events",
-      "scope": "manifests:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Material changes detected against manifests, and whether each one has been applied to the approvals it affects."
+      "summary": "Classify a product to a category path and sector. Nothing resolves a pack until this succeeds."
     },
     {
       "operation_id": "list_remediations",
@@ -921,100 +1003,6 @@
       "public": false,
       "path_params": [],
       "summary": "Remediations recorded against findings — what was changed or reviewed, by whom, and whether it is complete."
-    },
-    {
-      "operation_id": "request_evidence",
-      "method": "POST",
-      "path": "/v1/counterparties/:counterparty_id/request-evidence",
-      "scope": "evidence:write",
-      "public": false,
-      "path_params": [
-        "counterparty_id"
-      ],
-      "summary": "Request the evidence a counterparty still owes, issuing a single-use portal token they can upload against."
-    },
-    {
-      "operation_id": "list_evidence_requests",
-      "method": "GET",
-      "path": "/v1/evidence-requests",
-      "scope": "evidence:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Outstanding evidence requests and what each counterparty still owes."
-    },
-    {
-      "operation_id": "get_portal_request",
-      "method": "GET",
-      "path": "/v1/portal/requests/:portal_token",
-      "scope": null,
-      "public": true,
-      "path_params": [
-        "portal_token"
-      ],
-      "summary": "What a counterparty is being asked for, resolved from the request token alone. Public — the supplier holds no API key, and this is the link in the email."
-    },
-    {
-      "operation_id": "submit_portal_evidence",
-      "method": "POST",
-      "path": "/v1/portal/requests/:portal_token/evidence",
-      "scope": null,
-      "public": true,
-      "path_params": [
-        "portal_token"
-      ],
-      "summary": "A counterparty files a document against the request made of them. Public by token; the token names one request and grants nothing else."
-    },
-    {
-      "operation_id": "list_frameworks",
-      "method": "GET",
-      "path": "/v1/frameworks",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [],
-      "summary": "The regulations PackAuth has ingested — jurisdiction, domain, clause count, and how many of its duties are actually enforced."
-    },
-    {
-      "operation_id": "get_framework",
-      "method": "GET",
-      "path": "/v1/frameworks/:framework_id",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [
-        "framework_id"
-      ],
-      "summary": "One regulation: its requirements, which are enforced, which are deferred with a deadline, and which are out of scope with a reason."
-    },
-    {
-      "operation_id": "list_framework_clauses",
-      "method": "GET",
-      "path": "/v1/frameworks/:framework_id/clauses",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [
-        "framework_id"
-      ],
-      "summary": "The clauses retrieved from a regulation, with the source URL and content hash that make each citation checkable."
-    },
-    {
-      "operation_id": "coverage_report",
-      "method": "GET",
-      "path": "/v1/coverage",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [],
-      "summary": "What PackAuth does and does not check, per jurisdiction and duty class, so partial coverage is legible before a release rather than after."
-    },
-    {
-      "operation_id": "get_clause",
-      "method": "GET",
-      "path": "/v1/frameworks/:framework_id/clauses/:section",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [
-        "framework_id",
-        "section"
-      ],
-      "summary": "One clause, with its retrieval provenance and every requirement and rule that rests on it. The reverse of a finding: start from the law and see what PackAuth does about it."
     },
     {
       "operation_id": "get_rule",
@@ -1028,15 +1016,6 @@
       "summary": "One rule: what it checks, which pack runs it, and every requirement and clause it traces to. A finding names a rule id and nothing could resolve it."
     },
     {
-      "operation_id": "list_duty_classes",
-      "method": "GET",
-      "path": "/v1/duty-classes",
-      "scope": "packs:read",
-      "public": false,
-      "path_params": [],
-      "summary": "Every class of labelling duty, and for each one which jurisdictions impose it, which frameworks declare it, and whether PackAuth enforces it."
-    },
-    {
       "operation_id": "create_sandbox_tenant",
       "method": "POST",
       "path": "/v1/sandbox/tenants",
@@ -1046,13 +1025,60 @@
       "summary": "Mint a throwaway tenant and key on the sandbox data plane. Refused on production — the sandbox is a separate database, not a mode."
     },
     {
-      "operation_id": "mint_widget_token",
-      "method": "POST",
-      "path": "/v1/widget-tokens",
-      "scope": "releases:read",
+      "operation_id": "list_stakeholders",
+      "method": "GET",
+      "path": "/v1/stakeholders",
+      "scope": "products:read",
       "public": false,
       "path_params": [],
-      "summary": "Mint a short-lived, origin-bound token for one widget over one object. The only way a widget is ever credentialed — a tenant API key must never reach a browser."
+      "summary": "List the stakeholders registered for this tenant and the authority scopes each one holds."
+    },
+    {
+      "operation_id": "create_stakeholder",
+      "method": "POST",
+      "path": "/v1/stakeholders",
+      "scope": "products:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Register a person or organisation who can review, approve or supply evidence, with the authority scopes their role carries."
+    },
+    {
+      "operation_id": "grant_authority",
+      "method": "POST",
+      "path": "/v1/stakeholders/:stakeholder_id/authority",
+      "scope": "approvals:write",
+      "public": false,
+      "path_params": [
+        "stakeholder_id"
+      ],
+      "summary": "Grant or revoke authority scopes for a stakeholder, beyond the defaults their role carries."
+    },
+    {
+      "operation_id": "stripe_webhook",
+      "method": "POST",
+      "path": "/v1/stripe/webhook",
+      "scope": null,
+      "public": true,
+      "path_params": [],
+      "summary": "Stripe event intake. Public, signature-verified."
+    },
+    {
+      "operation_id": "list_webhook_endpoints",
+      "method": "GET",
+      "path": "/v1/webhook-endpoints",
+      "scope": "billing:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Registered endpoints, their subscribed event types and delivery status. Never the secret."
+    },
+    {
+      "operation_id": "create_webhook_endpoint",
+      "method": "POST",
+      "path": "/v1/webhook-endpoints",
+      "scope": "billing:write",
+      "public": false,
+      "path_params": [],
+      "summary": "Register a URL to receive events. The signing secret is returned once and stored only as a hash."
     },
     {
       "operation_id": "list_widget_tokens",
@@ -1064,6 +1090,15 @@
       "summary": "Tokens minted for this tenant, newest first. Never the token itself — only its prefix, what it was scoped to, and whether it is still live."
     },
     {
+      "operation_id": "mint_widget_token",
+      "method": "POST",
+      "path": "/v1/widget-tokens",
+      "scope": "releases:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Mint a short-lived, origin-bound token for one widget over one object. The only way a widget is ever credentialed — a tenant API key must never reach a browser."
+    },
+    {
       "operation_id": "get_widget_data",
       "method": "GET",
       "path": "/v1/widget/:widget_token/data",
@@ -1073,6 +1108,15 @@
         "widget_token"
       ],
       "summary": "What the embedded widget renders. Public because the token IS the credential: it names one object, expires in minutes, and is refused from an origin it was not minted for."
+    },
+    {
+      "operation_id": "list_workspaces",
+      "method": "GET",
+      "path": "/v1/workspaces",
+      "scope": "products:read",
+      "public": false,
+      "path_params": [],
+      "summary": "This tenant's workspaces. Every product belongs to one, so this is where an integration starts."
     }
   ]
 }
