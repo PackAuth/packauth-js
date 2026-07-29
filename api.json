@@ -44,12 +44,12 @@
     {
       "id": "evidence:read",
       "description": "Read evidence on file and the outstanding requests against counterparties. Separate from evidence:write because reading what a supplier owes is routine and uploading on their behalf is not.",
-      "operations": 1
+      "operations": 2
     },
     {
       "id": "evidence:write",
       "description": "Submit evidence against a counterparty obligation.",
-      "operations": 3
+      "operations": 4
     },
     {
       "id": "findings:read",
@@ -64,12 +64,12 @@
     {
       "id": "manifests:read",
       "description": "Read packaging manifests and their per-market matrices.",
-      "operations": 6
+      "operations": 7
     },
     {
       "id": "manifests:write",
       "description": "Create and amend manifests. A manifest in an approved state cannot be amended without superseding it.",
-      "operations": 4
+      "operations": 5
     },
     {
       "id": "packs:read",
@@ -156,7 +156,7 @@
     {
       "id": "evidence",
       "description": "What counterparties supply against those obligations — certificates, declarations, test reports.",
-      "operations": 3
+      "operations": 5
     },
     {
       "id": "evidence-requests",
@@ -186,7 +186,7 @@
     {
       "id": "manifests",
       "description": "A packaging manifest is one product's artwork, materials and claims at a point in time. Everything downstream refers to one.",
-      "operations": 9
+      "operations": 11
     },
     {
       "id": "packaging",
@@ -386,6 +386,52 @@
         "manifest_id"
       ],
       "summary": "Every artwork version attached to this manifest, newest first."
+    },
+    {
+      "operation_id": "upload_artwork_file",
+      "method": "PUT",
+      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
+      "scope": "manifests:write",
+      "public": false,
+      "path_params": [
+        "manifest_id",
+        "artwork_version_id"
+      ],
+      "summary": "Store the artwork original. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the attached version — the file_hash on a release is only a fact if PackAuth held the file."
+    },
+    {
+      "operation_id": "get_artwork_file",
+      "method": "GET",
+      "path": "/v1/manifests/:manifest_id/artwork/:artwork_version_id/file",
+      "scope": "manifests:read",
+      "public": false,
+      "path_params": [
+        "manifest_id",
+        "artwork_version_id"
+      ],
+      "summary": "Retrieve the stored artwork original for this version."
+    },
+    {
+      "operation_id": "upload_evidence_file",
+      "method": "PUT",
+      "path": "/v1/evidence/:evidence_id/file",
+      "scope": "evidence:write",
+      "public": false,
+      "path_params": [
+        "evidence_id"
+      ],
+      "summary": "Store the evidence document. PackAuth hashes the bytes it receives and refuses a hash that disagrees with the record."
+    },
+    {
+      "operation_id": "get_evidence_file",
+      "method": "GET",
+      "path": "/v1/evidence/:evidence_id/file",
+      "scope": "evidence:read",
+      "public": false,
+      "path_params": [
+        "evidence_id"
+      ],
+      "summary": "Retrieve the stored evidence document."
     },
     {
       "operation_id": "get_manifest",
