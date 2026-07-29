@@ -89,7 +89,7 @@
     {
       "id": "releases:read",
       "description": "Read print releases and verify one from its public reference.",
-      "operations": 2
+      "operations": 4
     },
     {
       "id": "releases:write",
@@ -251,6 +251,16 @@
     {
       "id": "webhook-endpoints",
       "description": "Outbound webhooks. Register a URL, choose the events you want, verify each delivery with the signing secret you were given once.",
+      "operations": 2
+    },
+    {
+      "id": "widget",
+      "description": "Embeddable widgets. A widget is a view over the same public endpoints an integrator can call directly, credentialed by a short-lived token bound to one object and one origin — never by a tenant API key.",
+      "operations": 1
+    },
+    {
+      "id": "widget-tokens",
+      "description": "Embeddable widgets. A widget is a view over the same public endpoints an integrator can call directly, credentialed by a short-lived token bound to one object and one origin — never by a tenant API key.",
       "operations": 2
     },
     {
@@ -1034,6 +1044,35 @@
       "public": true,
       "path_params": [],
       "summary": "Mint a throwaway tenant and key on the sandbox data plane. Refused on production — the sandbox is a separate database, not a mode."
+    },
+    {
+      "operation_id": "mint_widget_token",
+      "method": "POST",
+      "path": "/v1/widget-tokens",
+      "scope": "releases:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Mint a short-lived, origin-bound token for one widget over one object. The only way a widget is ever credentialed — a tenant API key must never reach a browser."
+    },
+    {
+      "operation_id": "list_widget_tokens",
+      "method": "GET",
+      "path": "/v1/widget-tokens",
+      "scope": "releases:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Tokens minted for this tenant, newest first. Never the token itself — only its prefix, what it was scoped to, and whether it is still live."
+    },
+    {
+      "operation_id": "get_widget_data",
+      "method": "GET",
+      "path": "/v1/widget/:widget_token/data",
+      "scope": null,
+      "public": true,
+      "path_params": [
+        "widget_token"
+      ],
+      "summary": "What the embedded widget renders. Public because the token IS the credential: it names one object, expires in minutes, and is refused from an origin it was not minted for."
     }
   ]
 }
