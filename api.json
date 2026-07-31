@@ -4,6 +4,28 @@
   "registry_version": "1.0.0",
   "concept": "api_operations",
   "constitution_ref": "constitution/10-SURFACES.md",
+  "http_methods": [
+    {
+      "id": "GET",
+      "label": "GET",
+      "description": "Reads. Safe and idempotent; never bills a metered unit and never changes lifecycle state."
+    },
+    {
+      "id": "POST",
+      "label": "POST",
+      "description": "Creates, or triggers work that produces a new object. The only method that may consume a metered unit."
+    },
+    {
+      "id": "PUT",
+      "label": "PUT",
+      "description": "Replaces an existing object wholesale. Idempotent — the same body twice leaves the same state."
+    }
+  ],
+  "vocabularies": {
+    "operations.method": "packauth:registry:api#http_methods.id",
+    "operations.scope": "packauth:registry:api#api_scopes.id",
+    "operations.path_params": "open:a path parameter is named by the path template of its own operation, and api-canonical checks the two against each other — a shared vocabulary would say two operations must name their ids alike, which is not true"
+  },
   "notes": [
     "THE canonical list of every PackAuth API operation. The Worker binds handlers to these rows by operation_id and the SDK derives its method set from them, so the route table exists exactly once — declaring it in code AND again in a client is how an SDK silently falls behind its own API.",
     "`operation_id` is the stable name. A path can change without breaking a caller; an operation_id changing is a breaking change and is treated as one.",
