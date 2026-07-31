@@ -24,7 +24,7 @@
     {
       "id": "billing:read",
       "description": "Read plan, usage and meter state.",
-      "operations": 3
+      "operations": 4
     },
     {
       "id": "billing:write",
@@ -256,6 +256,11 @@
     {
       "id": "stripe",
       "description": "Payment webhooks. Called by Stripe, not by you.",
+      "operations": 1
+    },
+    {
+      "id": "webhook-deliveries",
+      "description": "What actually happened to each outbound webhook. Registering an endpoint and never being able to ask whether anything reached it is the shape every integrator has been burned by; the attempts are recorded and this is how they are read.",
       "operations": 1
     },
     {
@@ -1061,6 +1066,15 @@
       "public": true,
       "path_params": [],
       "summary": "Stripe event intake. Public, signature-verified."
+    },
+    {
+      "operation_id": "list_webhook_deliveries",
+      "method": "GET",
+      "path": "/v1/webhook-deliveries",
+      "scope": "billing:read",
+      "public": false,
+      "path_params": [],
+      "summary": "Every delivery attempted for this tenant — event type, endpoint, attempt count, the response status the endpoint returned, and whether it is pending, delivered, failed or exhausted. Never the payload's signature and never the endpoint secret."
     },
     {
       "operation_id": "list_webhook_endpoints",
